@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ラングトンのアリ解析ツール</title>
+<style>
+:root{color-scheme:light dark;--bg:#f4f6fa;--panel:#fff;--text:#172033;--muted:#5d687a;--line:#dce2eb;--accent:#375fe8;--accent2:#eaf0ff;--good:#13784b;--bad:#b42318}
+@media(prefers-color-scheme:dark){:root{--bg:#10141d;--panel:#1a2230;--text:#e8edf6;--muted:#a8b3c5;--line:#344052;--accent:#8ba5ff;--accent2:#252f4b;--good:#67d7a0;--bad:#ff938b}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1050px;margin:0 auto;padding:26px 16px 40px}.hero{margin-bottom:22px}.kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);font-weight:800}.hero h1{margin:5px 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.2}.hero p{color:var(--muted);margin:0;max-width:750px}.layout{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:18px;align-items:start}@media(max-width:780px){.layout{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 6px 22px #00000008}.panel h2{margin:0 0 15px;font-size:18px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field.wide{grid-column:1/-1}.field label{font-size:13px;font-weight:700;color:var(--muted)}input,select{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:10px 11px;width:100%;min-width:0}input:focus,select:focus,button:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 35%,transparent);outline-offset:2px}.actions{display:flex;gap:10px;margin-top:17px;flex-wrap:wrap}button{font:inherit;font-weight:750;border:0;border-radius:10px;padding:11px 15px;cursor:pointer}.primary{background:var(--accent);color:white}.secondary{background:var(--accent2);color:var(--text)}button:disabled{opacity:.45;cursor:not-allowed}.notice{margin-top:14px;font-size:12px;color:var(--muted)}.status{display:flex;align-items:center;gap:9px;font-weight:750;margin-bottom:8px}.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}.dot.busy{background:#d99000;box-shadow:0 0 0 4px #d990001e}.dot.good{background:var(--good)}.dot.bad{background:var(--bad)}.muted{color:var(--muted)}.progressbar{height:8px;background:var(--line);border-radius:9px;overflow:hidden;margin:14px 0}.progressbar>div{height:100%;width:0%;background:var(--accent);transition:width .18s}.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:17px 0}.stat{border:1px solid var(--line);border-radius:11px;padding:12px}.stat .label{font-size:12px;color:var(--muted)}.stat .value{font-size:20px;font-weight:800;overflow-wrap:anywhere}.result-title{margin:20px 0 10px;font-size:16px}.antgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media(max-width:500px){.antgrid{grid-template-columns:1fr}}.ant{border:1px solid var(--line);border-radius:12px;padding:13px}.ant h3{font-size:15px;margin:0 0 8px}.ant p{margin:4px 0;font-size:13px}.red{color:#df4b4b}.blue{color:#4c83ff}details{margin-top:16px}summary{cursor:pointer;font-weight:750}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:460px;overflow:auto;background:var(--bg);border:1px solid var(--line);padding:12px;border-radius:10px;font:12px/1.45 ui-monospace,monospace}.hidden{display:none!important}.statusmsg{white-space:pre-wrap;overflow-wrap:anywhere}.tiny{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+ <header class="hero"><div class="kicker">Python · Browser edition</div><h1>ラングトンのアリ解析ツール</h1><p>2匹のアリの104歩ハイウェイとループを解析します。WindowsでもChromebookでも、Chrome / Edge などのブラウザから使えます。端末へのPythonのインストールは不要です。</p></header>
+ <div class="layout">
+  <section class="panel">
+   <h2>解析設定</h2>
+   <form id="settings">
+    <div class="fields">
+     <div class="field wide"><label for="maxSteps">最大歩数</label><input id="maxSteps" type="number" min="1" max="10000000" step="10000" value="200000" required></div>
+     <div class="field"><label for="spacing">初期配置の間隔</label><input id="spacing" type="number" min="0" max="100000000" step="1" value="0" required></div>
+     <div class="field"><label for="period">周期（歩）</label><input id="period" type="number" min="1" max="1000000" step="1" value="104" required></div>
+     <div class="field"><label for="ant1">アリ1の初期方向</label><select id="ant1"><option value="up">上</option><option value="right">右</option><option value="down">下</option><option value="left">左</option></select></div>
+     <div class="field"><label for="ant2">アリ2の初期方向</label><select id="ant2"><option value="up">上</option><option value="right">右</option><option value="down">下</option><option value="left">左</option></select></div>
+     <div class="field"><label for="cycles">連続確認する周期数</label><input id="cycles" type="number" min="2" max="10000" step="1" value="20" required></div>
+     <div class="field"><label for="progressEvery">進捗表示間隔</label><input id="progressEvery" type="number" min="0" max="10000000" step="1000" value="10000" required></div>
+    </div>
+    <div class="actions"><button class="primary" id="runBtn" type="submit">▶ 解析開始</button><button class="secondary" id="cancelBtn" type="button" disabled>■ 中止</button></div>
+    <p class="notice">大きな歩数ほどメモリを多く使います。Chromebookではまず20万歩程度から試してください。進捗表示間隔を0にすると途中表示を省略します。</p>
+   </form>
+  </section>
+  <section class="panel" aria-live="polite">
+   <div class="status"><span id="statusDot" class="dot"></span><span id="statusTitle">待機中</span></div>
+   <p id="statusMessage" class="statusmsg muted">設定して「解析開始」を押してください。</p>
+   <div class="progressbar"><div id="progressFill"></div></div>
+   <div class="stats">
+    <div class="stat"><div class="label">シミュレーション歩数</div><div class="value" id="stepsValue">—</div></div>
+    <div class="stat"><div class="label">現在の黒マス数</div><div class="value" id="blackValue">—</div></div>
+    <div class="stat"><div class="label">通過済みマス数</div><div class="value" id="visitedValue">—</div></div>
+    <div class="stat"><div class="label">判定</div><div class="value" id="resultValue">—</div></div>
+   </div>
+   <div id="results" class="hidden">
+    <h2 class="result-title">解析結果</h2>
+    <div id="antCards" class="antgrid"></div>
+    <p id="loopText" class="tiny"></p>
+    <div class="actions"><button id="downloadBtn" class="primary" type="button">JSONレポートを保存</button><button id="copyBtn" class="secondary" type="button">JSONを表示</button></div>
+    <details id="jsonDetails"><summary>JSONレポート全文</summary><pre id="jsonOutput"></pre></details>
+   </div>
+  </section>
+ </div>
+ <p class="tiny" style="margin-top:18px">注意：このファイルは初回起動時にインターネット経由でPyodide（ブラウザ内でPythonを動かす仕組み）を読み込みます。端末にPythonを入れる必要はありませんが、オフラインでの初回起動には対応していません。</p>
+</main>
+<script id="python-source" type="text/plain">
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""2匹のラングトンのアリ：104歩ハイウェイ／ループ検出器（標準ライブラリのみ）
+
+例:
+  python langtons_ant_analyzer.py
+  python langtons_ant_analyzer.py --max-steps 300000
+  python langtons_ant_analyzer.py --spacing 100000 --max-steps 50000
+  python langtons_ant_analyzer.py --ant1-dir up --ant2-dir left --output result.json
+
+同時処理：両方のアリが変更前のマス色を読み、その後に反転・方向変更を適用してから、2匹とも前進します。
+盤面は無限平面として扱い、黒マスのみを保存します。
+"""
+from __future__ import annotations
+import argparse, json, sys
+from collections import deque
+from pathlib import Path
+
+DIRS = {"up": 0, "right": 1, "down": 2, "left": 3}
+DIR_JA = ("上", "右", "下", "左")
+DX, DY = (0, 1, 0, -1), (-1, 0, 1, 0)
+MASK = (1 << 64) - 1
+GOLD = 0x9E3779B97F4A7C15
+SALT_A, SALT_B = 0x243F6A8885A308D3, 0x13198A2E03707344
+
+
+def mix64(z: int) -> int:
+    z = (z + GOLD) & MASK
+    z = ((z ^ (z >> 30)) * 0xBF58476D1CE4E5B9) & MASK
+    z = ((z ^ (z >> 27)) * 0x94D049BB133111EB) & MASK
+    return (z ^ (z >> 31)) & MASK
+
+
+def rotl64(v: int, n: int) -> int:
+    return ((v << n) | (v >> (64 - n))) & MASK
+
+
+def signature(x: int, y: int) -> tuple[int, int]:
+    """マス単位の2本の64bit署名。反転時にXORして盤面ハッシュを更新する。"""
+    ux, uy = x & MASK, y & MASK
+    xa, ya = mix64(ux ^ SALT_A), mix64(uy ^ SALT_B)
+    xb, yb = mix64(ux ^ SALT_B), mix64(uy ^ SALT_A)
+    return (mix64(xa ^ rotl64(ya, 17) ^ SALT_A),
+            mix64(xb ^ rotl64(yb, 31) ^ SALT_B))
+
+
+class Ant:
+    def __init__(self, x: int, y: int, direction: int):
+        self.x, self.y, self.direction = x, y, direction
+
+
+class Analyzer:
+    def __init__(self, spacing: int, d1: str, d2: str, period: int,
+                 cycles: int, max_steps: int, progress_every: int):
+        self.spacing, self.period, self.cycles = spacing, period, cycles
+        self.max_steps, self.progress_every = max_steps, progress_every
+        distance = spacing + 1
+        x1 = -(distance // 2)
+        self.ants = [Ant(x1, 0, DIRS[d1]), Ant(x1 + distance, 0, DIRS[d2])]
+        self.initial_directions = {"ant1": DIR_JA[DIRS[d1]], "ant2": DIR_JA[DIRS[d2]]}
+
+        self.black: set[tuple[int, int]] = set()
+        self.hash_a = self.hash_b = 0
+        self.visited = {(self.ants[0].x, self.ants[0].y), (self.ants[1].x, self.ants[1].y)}
+        self.direction_history = [bytearray(), bytearray()]
+        self.match_run = [0, 0]
+        self.required_matches = period * (cycles - 1)
+        self.positions = deque(maxlen=period * cycles)  # 各ステップ開始時の2匹の位置
+        self.highway_segments = [[], []]
+        self.highway_active = [False, False]
+        self.highway_cells = [set(), set()]
+        self.steps = 0
+        self.loop = None
+        self.state_history = {self.state_key(): 0}
+        self.progress_callback = None
+
+    def is_black(self, x: int, y: int) -> bool:
+        return (x, y) in self.black
+
+    def set_cell(self, x: int, y: int, black: bool) -> None:
+        pos = (x, y)
+        old = pos in self.black
+        if old == black:
+            return
+        ha, hb = signature(x, y)
+        self.hash_a ^= ha
+        self.hash_b ^= hb
+        if black:
+            self.black.add(pos)
+        else:
+            self.black.remove(pos)
+
+    def state_key(self) -> tuple[int, ...]:
+        """蟻1の絶対位置＋蟻1原点での相対座標＋両方の向き＋盤面ハッシュ。"""
+        a, b = self.ants
+        return (a.x, a.y, b.x-a.x, b.y-a.y, a.direction, b.direction,
+                self.hash_a, self.hash_b)
+
+    def register_highway(self, ant_i: int, start: int, confirmed: int) -> None:
+        window = list(self.positions)
+        base = self.steps - len(window)  # stepsは今回の移動完了後
+        offset = start - base
+        if offset < 0 or offset >= len(window):
+            offset = max(0, offset)
+        for item in window[offset:]:
+            self.highway_cells[ant_i].add(item[ant_i])
+        end_i = offset + self.period
+        displacement = None
+        if offset < len(window) and end_i < len(window):
+            p0, p1 = window[offset][ant_i], window[end_i][ant_i]
+            displacement = [p1[0]-p0[0], p1[1]-p0[1]]
+        self.highway_segments[ant_i].append({
+            "start_step": start,
+            "confirmed_at_step": confirmed,
+            "period": self.period,
+            "confirmed_cycles": self.cycles,
+            "displacement_per_period_xy": displacement,
+        })
+
+    def step_once(self) -> None:
+        src = [(a.x, a.y) for a in self.ants]
+        self.positions.append((src[0], src[1]))
+        self.visited.update(src)
+        active_before = self.highway_active[:]
+        for i in range(2):
+            if active_before[i]:
+                self.highway_cells[i].add(src[i])
+
+        # 先に2匹とも変更前の色から処理内容を計算。
+        ops = []
+        for a in self.ants:
+            black = self.is_black(a.x, a.y)
+            nd = (a.direction + 3) % 4 if black else (a.direction + 1) % 4
+            ops.append((a.x, a.y, nd, not black))
+
+        # 次に色と方向を更新。同じマスの場合は両方同じ変更後色を書く。
+        for i, (x, y, nd, new_black) in enumerate(ops):
+            self.set_cell(x, y, new_black)
+            self.ants[i].direction = nd
+
+        # 2匹とも前進。
+        for a in self.ants:
+            a.x += DX[a.direction]
+            a.y += DY[a.direction]
+            self.visited.add((a.x, a.y))
+        self.steps += 1
+
+        matches = [False, False]
+        for i, a in enumerate(self.ants):
+            hist = self.direction_history[i]
+            hist.append(a.direction)
+            t = len(hist) - 1
+            if t >= self.period and hist[t] == hist[t-self.period]:
+                self.match_run[i] += 1
+                matches[i] = True
+            else:
+                self.match_run[i] = 0
+                matches[i] = False
+            if active_before[i] and not matches[i]:
+                self.highway_active[i] = False
+
+        # 完全な盤面状態・位置・向きが再登場したか確認。
+        key = self.state_key()
+        if key in self.state_history:
+            first = self.state_history[key]
+            a, b = self.ants
+            self.loop = {
+                "first_seen_step": first,
+                "repeated_at_step": self.steps,
+                "loop_period_steps": self.steps - first,
+                "ant1_absolute_position_xy": [a.x, a.y],
+                "ant2_relative_to_ant1_xy": [b.x-a.x, b.y-a.y],
+                "directions": [a.direction, b.direction],
+                "board_hash_128bit_hex": f"{self.hash_a:016x}{self.hash_b:016x}",
+            }
+            return
+        self.state_history[key] = self.steps
+
+        # 104歩周期が20回続いた場合、開始ステップを逆算。
+        for i in range(2):
+            if not self.highway_active[i] and self.match_run[i] >= self.required_matches:
+                t = len(self.direction_history[i]) - 1
+                start = t - self.match_run[i] + 1 - self.period
+                self.register_highway(i, start, self.steps)
+                self.highway_active[i] = True
+
+    def run(self) -> dict:
+        status = "step_limit"
+        print(f"解析開始：間隔={self.spacing}、最大歩数={self.max_steps:,}、"
+              f"周期={self.period}歩、確認回数={self.cycles}", file=sys.stderr)
+        while self.steps < self.max_steps:
+            self.step_once()
+            if self.loop is not None:
+                status = "loop_detected"
+                break
+            if self.highway_active[0] and self.highway_active[1]:
+                status = "both_highways"
+                break
+            if self.progress_every and self.steps % self.progress_every == 0:
+                print(f"  {self.steps:,}歩：黒マス={len(self.black):,}、"
+                      f"通過済み={len(self.visited):,}、"
+                      f"周期確認={[bool(x) for x in self.highway_segments]}", file=sys.stderr)
+                if self.progress_callback is not None:
+                    self.progress_callback(self.steps, len(self.black), len(self.visited),
+                                            [bool(x) for x in self.highway_segments])
+
+        highway_union = self.highway_cells[0] | self.highway_cells[1]
+        outside_black = self.black - highway_union
+        ant_reports = []
+        for i, a in enumerate(self.ants):
+            segments = self.highway_segments[i]
+            ant_reports.append({
+                "ant": i + 1,
+                "color": "red" if i == 0 else "blue",
+                "position_xy": [a.x, a.y],
+                "direction_number": a.direction,
+                "direction_japanese": DIR_JA[a.direction],
+                "highway_active_at_end": self.highway_active[i],
+                "highway_segments": segments,
+                "period_start_step_first_detected": segments[0]["start_step"] if segments else None,
+                "confirmed_at_step_first_detected": segments[0]["confirmed_at_step"] if segments else None,
+                "highway_cells_marked": len(self.highway_cells[i]),
+            })
+        return {
+            "status": status,
+            "steps_simulated": self.steps,
+            "settings": {
+                "spacing_empty_cells": self.spacing,
+                "initial_directions": self.initial_directions,
+                "highway_period_steps": self.period,
+                "required_consecutive_cycles": self.cycles,
+                "maximum_steps": self.max_steps,
+                "simultaneous_processing": True,
+            },
+            "ants": ant_reports,
+            "loop": self.loop,
+            "statistics": {
+                "black_cells_remaining": len(self.black),
+                "highway_cells_marked_union": len(highway_union),
+                "black_cells_outside_detected_highway": len(outside_black),
+                "ever_visited_cells": len(self.visited),
+                "outside_highway_count_is_based_on_confirmed_path": bool(highway_union),
+                "note": "ハイウェイ外の黒マス数は、確認済み周期の経路として記録したマス以外に残る黒マス数。周期未検出なら、すべての黒マスが経路外として数えられます。",
+            },
+            "loop_detection_note": "状態キーは蟻1の絶対座標、蟻1原点の蟻2相対座標、両者の向き、盤面ハッシュ。ハッシュは64bit成分2本なので衝突確率は極めて小さいものの、理論上ゼロではありません。",
+        }
+
+
+def run_analysis_json(config_json: str) -> str:
+    """ブラウザGUIから呼び出すエントリーポイント。"""
+    cfg = json.loads(config_json)
+    max_steps = int(cfg.get("max_steps", 200_000))
+    spacing = int(cfg.get("spacing", 0))
+    period = int(cfg.get("period", 104))
+    cycles = int(cfg.get("cycles", 20))
+    progress_every = int(cfg.get("progress_every", 10_000))
+    d1 = str(cfg.get("ant1_dir", "up"))
+    d2 = str(cfg.get("ant2_dir", "up"))
+    if max_steps < 1 or spacing < 0 or period < 1 or cycles < 2 or progress_every < 0:
+        raise ValueError("設定値が不正です。最大歩数・周期は1以上、間隔は0以上、確認回数は2以上にしてください。")
+    if d1 not in DIRS or d2 not in DIRS:
+        raise ValueError("アリの方向が不正です。")
+    analyzer = Analyzer(spacing, d1, d2, period, cycles, max_steps, progress_every)
+    analyzer.progress_callback = progress_cb
+    report = analyzer.run()
+    return json.dumps(report, ensure_ascii=False, indent=2)
+
+</script>
+<script>
+(() => {
+  "use strict";
+  const PYODIDE_VERSION = "v314.0.7";
+  const PYODIDE_BASE = `https://cdn.jsdelivr.net/pyodide/${PYODIDE_VERSION}/full/`;
+  const $ = (id) => document.getElementById(id);
+  const fmt = (v) => Number(v).toLocaleString("ja-JP");
+  const direction = (v) => ({up:"上",right:"右",down:"下",left:"左"})[v] || v || "—";
+  let worker = null, workerBlobURL = null, latestReport = null, isRunning = false;
+  const pythonSource = $("python-source").textContent.trim();
+
+  // The worker keeps simulation work off the UI thread so progress and Stop remain responsive.
+  const workerCode = `
+    let pyodideInstance = null;
+    self.reportProgress = (steps, black, visited, highwaysJson) => {
+      self.postMessage({type:"progress", steps, black, visited, highways:JSON.parse(highwaysJson)});
+    };
+    self.onmessage = async (event) => {
+      const { config, pythonSource, pyodideBase } = event.data;
+      try {
+        self.postMessage({type:"status", message:"ブラウザ内のPython実行環境を読み込んでいます…（初回は少し時間がかかります）"});
+        if (!pyodideInstance) {
+          importScripts(pyodideBase + "pyodide.js");
+          pyodideInstance = await loadPyodide({indexURL: pyodideBase});
+        }
+        self.postMessage({type:"status", message:"Pythonを準備中…"});
+        pyodideInstance.runPython(pythonSource);
+        pyodideInstance.runPython("def progress_cb(steps, black, visited, highways):\\n    import js\\n    js.reportProgress(steps, black, visited, json.dumps(highways))");
+        pyodideInstance.globals.set("config_json", JSON.stringify(config));
+        self.postMessage({type:"status", message:"シミュレーション実行中…"});
+        pyodideInstance.runPython("result_json = run_analysis_json(config_json)");
+        const value = pyodideInstance.globals.get("result_json");
+        const report = value.toJs ? value.toJs() : String(value);
+        self.postMessage({type:"done", report});
+        value.destroy && value.destroy();
+      } catch (error) {
+        self.postMessage({type:"error", message:String(error && error.message ? error.message : error), stack:String(error && error.stack ? error.stack : "")});
+      }
+    };
+  `;
+
+  function setStatus(title, message, kind="") {
+    $("statusTitle").textContent = title;
+    $("statusMessage").textContent = message;
+    $("statusDot").className = "dot" + (kind ? " " + kind : "");
+  }
+  function setRunning(running) {
+    isRunning = running;
+    $("runBtn").disabled = running;
+    $("cancelBtn").disabled = !running;
+  }
+  function releaseWorkerURL() {
+    if (workerBlobURL) { URL.revokeObjectURL(workerBlobURL); workerBlobURL = null; }
+  }
+  function fail(message) {
+    setStatus("エラー", message, "bad");
+    setRunning(false);
+    releaseWorkerURL();
+    if (worker) { worker.terminate(); worker = null; }
+  }
+  function showReport(reportText) {
+    let report;
+    try { report = JSON.parse(reportText); }
+    catch(e) { fail("解析結果のJSONを読み取れませんでした: " + e.message); return; }
+    latestReport = {text:reportText, data:report};
+    const resultNames = {step_limit:"歩数上限", loop_detected:"ループ検出", both_highways:"両方のハイウェイ検出"};
+    $("stepsValue").textContent = fmt(report.steps_simulated);
+    $("resultValue").textContent = resultNames[report.status] || report.status;
+    $("progressFill").style.width = "100%";
+    $("results").classList.remove("hidden");
+    $("antCards").innerHTML = "";
+    for (const ant of report.ants || []) {
+      const card = document.createElement("article"); card.className = "ant";
+      const colorName = ant.color === "red" ? "red" : "blue";
+      const seg = ant.highway_segments || [];
+      let extra = seg.length ? `周期開始：${fmt(seg[0].start_step)}歩<br>確認完了：${fmt(seg[0].confirmed_at_step)}歩<br>1周期の変位：${JSON.stringify(seg[0].displacement_per_period_xy)}` : "ハイウェイ：未確認";
+      card.innerHTML = `<h3 class="${colorName}">● アリ${ant.ant}（${ant.color === "red" ? "赤" : "青"}）</h3><p>最終位置：${JSON.stringify(ant.position_xy)}</p><p>最終方向：${direction(ant.direction_japanese)}</p><p>周期継続中：${ant.highway_active_at_end ? "はい" : "いいえ"}</p><p>${extra}</p><p>記録した経路マス：${fmt(ant.highway_cells_marked)}</p>`;
+      $("antCards").appendChild(card);
+    }
+    if (report.loop) {
+      $("loopText").textContent = `ループ検出：${fmt(report.loop.first_seen_step)}歩で初回出現、${fmt(report.loop.repeated_at_step)}歩で再出現（周期 ${fmt(report.loop.loop_period_steps)}歩）`;
+    } else { $("loopText").textContent = "ループは検出されませんでした。"; }
+    $("blackValue").textContent = fmt(report.statistics.black_cells_remaining);
+    $("visitedValue").textContent = fmt(report.statistics.ever_visited_cells);
+    $("jsonOutput").textContent = reportText;
+    setStatus("解析完了", "結果を確認し、JSONレポートを保存できます。", "good");
+    setRunning(false);
+    if (worker) { worker.terminate(); worker = null; }
+  }
+  $("settings").addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (isRunning) return;
+    const config = {
+      max_steps:Number($("maxSteps").value), spacing:Number($("spacing").value),
+      period:Number($("period").value), cycles:Number($("cycles").value),
+      ant1_dir:$("ant1").value, ant2_dir:$("ant2").value,
+      progress_every:Number($("progressEvery").value)
+    };
+    if (!Number.isSafeInteger(config.max_steps) || config.max_steps < 1 || !Number.isSafeInteger(config.spacing) || config.spacing < 0 || !Number.isSafeInteger(config.period) || config.period < 1 || !Number.isSafeInteger(config.cycles) || config.cycles < 2 || !Number.isSafeInteger(config.progress_every) || config.progress_every < 0) {
+      setStatus("設定値を確認してください", "歩数・周期は1以上、間隔は0以上、周期確認数は2以上、進捗間隔は0以上の整数にしてください。", "bad"); return;
+    }
+    latestReport = null;
+    $("results").classList.add("hidden");
+    $("progressFill").style.width = "0%";
+    $("stepsValue").textContent = "0"; $("blackValue").textContent = "—"; $("visitedValue").textContent = "—"; $("resultValue").textContent = "計算中";
+    setRunning(true); setStatus("起動中", "解析用のPythonを準備します…", "busy");
+    workerBlobURL = URL.createObjectURL(new Blob([workerCode], {type:"text/javascript"}));
+    worker = new Worker(workerBlobURL);
+    worker.onmessage = (event) => {
+      releaseWorkerURL();
+      const msg = event.data;
+      if (msg.type === "status") setStatus("処理中", msg.message, "busy");
+      else if (msg.type === "progress") {
+        $("stepsValue").textContent = fmt(msg.steps); $("blackValue").textContent = fmt(msg.black); $("visitedValue").textContent = fmt(msg.visited);
+        const percentage = Math.min(100, 100 * msg.steps / config.max_steps);
+        $("progressFill").style.width = percentage + "%";
+        setStatus("シミュレーション実行中", `${fmt(msg.steps)} / ${fmt(config.max_steps)} 歩　·　ハイウェイ確認 ${msg.highways.map(v => v ? "済" : "未").join(" / ")}`, "busy");
+      } else if (msg.type === "done") showReport(msg.report);
+      else if (msg.type === "error") fail("Python実行中にエラーが発生しました。\n" + msg.message + (msg.stack ? "\n\n" + msg.stack : ""));
+    };
+    worker.onerror = (event) => { releaseWorkerURL(); fail("実行環境の読み込みに失敗しました。インターネット接続を確認して再実行してください。\n" + (event.message || "")); };
+    worker.postMessage({config, pythonSource, pyodideBase:PYODIDE_BASE});
+  });
+  $("cancelBtn").addEventListener("click", () => {
+    if (worker) { worker.terminate(); worker = null; }
+    releaseWorkerURL();
+    setRunning(false); setStatus("中止しました", "解析を中止しました。もう一度実行できます。");
+    $("resultValue").textContent = "中止";
+  });
+  $("downloadBtn").addEventListener("click", () => {
+    if (!latestReport) return;
+    const blob = new Blob([latestReport.text], {type:"application/json;charset=utf-8"});
+    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+    a.href = url; a.download = "langtons_ant_report.json"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+  $("copyBtn").addEventListener("click", () => {
+    $("jsonDetails").open = true;
+    $("jsonDetails").scrollIntoView({behavior:"smooth", block:"nearest"});
+  });
+})();
+</script>
+</body>
+</html>
